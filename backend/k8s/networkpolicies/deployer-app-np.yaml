@@ -1,0 +1,62 @@
+# Allows: Ingress from nginx and flask-app, Egress to Docker Hub, K8s API, flask-monitor
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deployer-app-netpol
+  namespace: ashapp
+spec:
+  podSelector:
+    matchLabels:
+      app: deployer-app
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from nginx ingress controller (for direct /deployer/ access)
+  - from:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 5000
+  
+  # Allow ingress from flask-app (for API forwarding from /deployer/* routes)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: flask-app
+    ports:
+    - protocol: TCP
+      port: 5000
+  
+  egress:
+  # Allow egress to flask-monitor for logging (log_to_monitor function in deployer/app.py)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: flask-monitor
+    ports:
+    - protocol: TCP
+      port: 6000
+  
+  # Allow egress to external Docker Hub and container registries
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS
+    - protocol: TCP
+      port: 80   # HTTP
+  
+  # Allow DNS resolution
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

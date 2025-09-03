@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Deployer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/deployer/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="tabs">
+      <a class="tab" href="/">ASHapp</a>
+      <a class="tab active" href="/deployer">Deployer</a>
+    </div>
+    <div class="userbox">
+      <span id="username"></span>
+      <button id="logout">Docker Logout</button>
+    </div>
+  </div>
+
+  <main class="container">
+
+    <!-- Docker Login Panel -->
+    <section class="panel" id="docker-login-panel">
+      <h2 style="text-align:center;color:#a5b4fc;">Docker Hub Login</h2>
+      <div class="docker-login-center">
+        <input id="docker-user" placeholder="Docker Hub Username" />
+        <input id="docker-token" placeholder="Docker Hub Token/Password" type="password" />
+        <button id="docker-login-btn">Login to Docker Hub</button>
+        <span id="docker-login-status"></span>
+      </div>
+    </section>
+
+    <!-- App Panels (hidden until login success) -->
+    <div id="deployer-ui" style="display:none;">
+      <section class="panel">
+        <h2>Flask App Code</h2>
+        <input id="app-name" placeholder="App Name (letters, numbers, dashes)" />
+        <textarea id="code" placeholder="Paste your Flask app.py code here..."></textarea>
+        <div class="row">
+          <button id="validate">Validate</button>
+          <span id="valid-status"></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Deploy Settings</h2>
+        <div class="grid">
+          <label>
+            Workload Kind
+            <select id="k8s-kind">
+              <option>Deployment</option>
+              <option>ReplicaSet</option>
+            </select>
+          </label>
+          <label>
+            Replicas
+            <input id="replicas" type="number" min="1" value="2" />
+          </label>
+          <label>
+            Service Type
+            <select id="service-type">
+              <option>NodePort</option>
+              <option>ClusterIP</option>
+              <option>LoadBalancer</option>
+            </select>
+          </label>
+          <label>
+            Namespace
+            <input id="namespace" type="text" value="default" />
+          </label>
+        </div>
+        <button id="deploy" disabled>Deploy to K8s</button>
+      </section>
+
+      <section class="panel">
+        <h2>Result</h2>
+        <pre id="result"></pre>
+        <h3>Applied Manifest</h3>
+        <pre id="manifest"></pre>
+        <h3>Logs</h3>
+        <pre id="logs"></pre>
+      </section>
+    </div>
+  </main>
+
+  <script src="/deployer/script.js"></script>
+</body>
+</html>
+

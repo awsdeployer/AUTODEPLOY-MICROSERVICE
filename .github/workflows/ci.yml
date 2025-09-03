@@ -1,0 +1,246 @@
+name: CI - Docker Build & Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ======================
+  # Flask App
+  # ======================
+  flask-app:
+    runs-on: self-hosted
+    env:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Dependencies
+        run: pip install -r backend/requirements.txt || true
+
+      - name: Linting (Flake8)
+        run: pip install flake8 && flake8 backend || true
+        continue-on-error: true
+
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v2
+        continue-on-error: true
+
+      - name: SCA (Safety)
+        run: pip install safety && safety check -r backend/requirements.txt || true
+        continue-on-error: true
+
+      - name: Unit Tests (pytest)
+        run: pip install pytest && pytest backend/tests || true
+        continue-on-error: true
+
+      - name: DAST (OWASP ZAP Baseline Scan)
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build & Push Flask App
+        run: |
+          cd backend
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/flask-app:latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/flask-app:latest
+
+      - name: Image Scan (Trivy - Flask App)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/flask-app:latest
+          format: table
+          exit-code: 0
+        continue-on-error: true
+
+  # ======================
+  # Deployer App
+  # ======================
+  deployer-app:
+    runs-on: self-hosted
+    needs: [flask-app]   # Run after Flask App
+    env:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Linting (Flake8)
+        run: pip install flake8 && flake8 backend || true
+        continue-on-error: true
+
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v2
+        continue-on-error: true
+
+      - name: SCA (Safety)
+        run: pip install safety && safety check -r backend/requirements.txt || true
+        continue-on-error: true
+
+      - name: Unit Tests (pytest)
+        run: pip install pytest && pytest backend/tests || true
+        continue-on-error: true
+
+      - name: DAST (OWASP ZAP Baseline Scan)
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build & Push Deployer App
+        run: |
+          cd backend
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest -f deployer-dockerfile .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest
+
+      - name: Image Scan (Trivy - Deployer App)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest
+          format: table
+          exit-code: 0
+        continue-on-error: true
+
+  # ======================
+  # History Service
+  # ======================
+  history-service:
+    runs-on: self-hosted
+    needs: [deployer-app]   # Run after Deployer App
+    env:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Linting (Flake8)
+        run: pip install flake8 && flake8 backend/history-services || true
+        continue-on-error: true
+
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v2
+        continue-on-error: true
+
+      - name: SCA (Safety)
+        run: pip install safety && safety check -r backend/history-services/requirements.txt || true
+        continue-on-error: true
+
+      - name: Unit Tests (pytest)
+        run: pip install pytest && pytest backend/history-services/tests || true
+        continue-on-error: true
+
+      - name: DAST (OWASP ZAP Baseline Scan)
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build & Push History Service
+        run: |
+          cd backend/history-services
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/history-service:latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/history-service:latest
+
+      - name: Image Scan (Trivy - History Service)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/history-service:latest
+          format: table
+          exit-code: 0
+        continue-on-error: true
+
+  # ======================
+  # Flask Monitor
+  # ======================
+  flask-monitor:
+    runs-on: self-hosted
+    needs: [history-service]   # Run after History Service
+    env:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Linting (Flake8)
+        run: pip install flake8 && flake8 backend/database || true
+        continue-on-error: true
+
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v2
+        continue-on-error: true
+
+      - name: SCA (Safety)
+        run: pip install safety && safety check -r backend/database/requirements.txt || true
+        continue-on-error: true
+
+      - name: Unit Tests (pytest)
+        run: pip install pytest && pytest backend/database/tests || true
+        continue-on-error: true
+
+      - name: DAST (OWASP ZAP Baseline Scan)
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build & Push Flask Monitor
+        run: |
+          cd backend/database
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/flask-monitor:latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/flask-monitor:latest
+
+      - name: Image Scan (Trivy - Flask Monitor)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/flask-monitor:latest
+          format: table
+          exit-code: 0
+        continue-on-error: true

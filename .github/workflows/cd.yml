@@ -1,0 +1,184 @@
+name: CD - Kubernetes Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI - Docker Build & Push"]  # Replace with your exact CI workflow name
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.27.0'
+
+      - name: Apply Namespace
+        run: |
+          cd backend/k8s
+          kubectl apply -f namespace.yaml
+          echo "Namespace applied"
+          kubectl get ns
+
+      - name: Apply Secrets
+        run: |
+          cd backend/k8s
+          kubectl apply -f secrets/
+          echo "Secrets applied"
+          kubectl get secrets -n ashapp
+
+      - name: Apply Persistent Volumes
+        run: |
+          cd backend/k8s
+          kubectl apply -f pv/
+          echo "PersistentVolumes applied"
+          kubectl get pv
+
+      - name: Apply StatefulSets
+        run: |
+          cd backend/k8s
+          kubectl apply -f statefulset/
+          echo "StatefulSets applied"
+          kubectl get statefulsets -n ashapp
+          kubectl get po -n ashapp
+
+      - name: Apply Deployments
+        run: |
+          cd backend/k8s
+          kubectl apply -f deployment/
+          echo "Deployments applied"
+          kubectl get deployments -n ashapp
+          kubectl get po -n ashapp
+
+      - name: Apply Services
+        run: |
+          cd backend/k8s
+          kubectl apply -f services/
+          echo "Services applied"
+          kubectl get svc -n ashapp
+
+      - name: Apply Ingress
+        run: |
+          cd backend/k8s
+          kubectl apply -f ingress/
+          echo "Ingress applied"
+          kubectl get svc -n ingress-nginx
+          kubectl get svc -n ashapp
+
+      - name: Apply Network Policies
+        run: |
+          cd backend/k8s
+          kubectl apply -f networkpolicies/
+          echo "NetworkPolicies applied"
+          kubectl get networkpolicy -n ashapp
+
+      - name: Apply HPA
+        run: |
+          cd backend/k8s
+          kubectl apply -f hpa/
+          echo "HPA applied"
+          kubectl get hpa -n ashapp
+
+      - name: Apply RBAC
+        run: |
+          cd backend/k8s
+          kubectl apply -f rbac/ --recursive
+          echo "RBAC applied"
+          kubectl get sa -n ashapp
+          kubectl get role -n ashapp
+          kubectl get rolebinding -n ashapp
+
+      # --- In-Cluster DAST Stage ---
+      - name: Discover Application Endpoint
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAMESPACE="ashapp"
+          PROTOCOL="http"
+          TARGET_URL=""
+
+          # EC2 public IP from metadata
+          PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || true)
+          echo "Using EC2 Public IP: $PUBLIC_IP"
+
+          # Try LoadBalancer service first
+          LB_INFO=$(kubectl -n "$NAMESPACE" get svc -o jsonpath='{range .items[?(@.spec.type=="LoadBalancer")]}{.status.loadBalancer.ingress[0].ip}{" "}{.status.loadBalancer.ingress[0].hostname}{" "}{.spec.ports[0].port}{"\n"}{end}' | head -n1 || true)
+          if [[ -n "$LB_INFO" ]]; then
+            read -r LB_IP LB_HOST LB_PORT <<<"$LB_INFO"
+            if [[ -n "${LB_IP:-}" ]]; then
+              TARGET_URL="${PROTOCOL}://${LB_IP}:${LB_PORT}/"
+            elif [[ -n "${LB_HOST:-}" ]]; then
+              TARGET_URL="${PROTOCOL}://${LB_HOST}:${LB_PORT}/"
+            fi
+          fi
+
+          # If no LoadBalancer, try NodePort
+          if [[ -z "$TARGET_URL" ]]; then
+            echo "No LoadBalancer found, trying NodePort..."
+            NP_INFO=$(kubectl -n "$NAMESPACE" get svc -o jsonpath='{range .items[?(@.spec.type=="NodePort")]}{.spec.ports[0].nodePort}{"\n"}{end}' | head -n1 || true)
+            if [[ -n "$NP_INFO" && -n "$PUBLIC_IP" ]]; then
+              TARGET_URL="${PROTOCOL}://${PUBLIC_IP}:${NP_INFO}/"
+            fi
+          fi
+
+          if [[ -n "$TARGET_URL" ]]; then
+            echo "Discovered candidate URL: $TARGET_URL"
+            if curl -sSf -m 5 "$TARGET_URL" >/dev/null; then
+              echo "Endpoint reachable."
+              echo "url=$TARGET_URL" >> "$GITHUB_OUTPUT"
+            else
+              echo "Endpoint not reachable, skipping DAST."
+              echo "url=" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "No endpoint found, skipping DAST."
+            echo "url=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run OWASP ZAP Baseline (DAST)
+        if: ${{ steps.discover.outputs.url != '' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p dast
+          echo "Running ZAP Baseline against: ${{ steps.discover.outputs.url }}"
+          docker run --rm \
+            -v "$(pwd)/dast:/zap/wrk" \
+            owasp/zap2docker-stable \
+            zap-baseline.py \
+              -t "${{ steps.discover.outputs.url }}" \
+              -r zap-baseline.html \
+              -J zap-results.json \
+              -x zap-report.xml \
+              -I
+          echo "DAST completed (baseline)."
+
+      - name: Create DAST skip note
+        if: ${{ steps.discover.outputs.url == '' }}
+        shell: bash
+        run: |
+          mkdir -p dast
+          echo "DAST was skipped: no reachable endpoint found." > dast/DAST_SKIPPED.txt
+
+      - name: Upload DAST Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report
+          path: |
+            dast/zap-baseline.html
+            dast/zap-results.json
+            dast/zap-report.xml
+            dast/DAST_SKIPPED.txt
+          if-no-files-found: warn
