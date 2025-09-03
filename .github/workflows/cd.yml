@@ -23,35 +23,6 @@ jobs:
         with:
           version: 'v1.27.0'
 
-      - name: Apply Namespace
-        run: |
-          cd backend/k8s
-          kubectl apply -f namespace.yaml
-          echo "Namespace applied"
-          kubectl get ns
-
-      - name: Apply Secrets
-        run: |
-          cd backend/k8s
-          kubectl apply -f secrets/
-          echo "Secrets applied"
-          kubectl get secrets -n ashapp
-
-      - name: Apply Persistent Volumes
-        run: |
-          cd backend/k8s
-          kubectl apply -f pv/
-          echo "PersistentVolumes applied"
-          kubectl get pv
-
-      - name: Apply StatefulSets
-        run: |
-          cd backend/k8s
-          kubectl apply -f statefulset/
-          echo "StatefulSets applied"
-          kubectl get statefulsets -n ashapp
-          kubectl get po -n ashapp
-
       - name: Apply Deployments
         run: |
           cd backend/k8s
@@ -65,14 +36,6 @@ jobs:
           cd backend/k8s
           kubectl apply -f services/
           echo "Services applied"
-          kubectl get svc -n ashapp
-
-      - name: Apply Ingress
-        run: |
-          cd backend/k8s
-          kubectl apply -f ingress/
-          echo "Ingress applied"
-          kubectl get svc -n ingress-nginx
           kubectl get svc -n ashapp
 
       - name: Apply Network Policies
