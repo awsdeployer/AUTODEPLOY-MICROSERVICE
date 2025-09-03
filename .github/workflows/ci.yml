@@ -15,6 +15,7 @@ jobs:
     env:
       DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
       DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      GIT_SHA: ${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -50,18 +51,16 @@ jobs:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build & Push Deployer App
+      - name: Build & Push Deployer App (using Git SHA)
         run: |
           cd backend
-          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest -f deployer-dockerfile .
-          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} -f deployer-dockerfile .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
 
       - name: Image Scan (Trivy - Deployer App)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:latest
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
           format: table
           exit-code: 0
         continue-on-error: true
-
- 
