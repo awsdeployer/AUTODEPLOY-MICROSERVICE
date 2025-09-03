@@ -2,7 +2,7 @@ name: CD - Kubernetes Deploy
 
 on:
   workflow_run:
-    workflows: ["CI - Docker Build & Push"]  # Replace with your exact CI workflow name
+    workflows: ["CI - Docker Build & Push"]  # Must match CI workflow name
     types:
       - completed
 
@@ -23,40 +23,50 @@ jobs:
         with:
           version: 'v1.27.0'
 
-      - name: Apply Deployments
-        run: |
-          cd backend/k8s
-          kubectl apply -f deployment/
-          echo "Deployments applied"
-          kubectl get deployments -n ashapp
-          kubectl get po -n ashapp
+      # ✅ Export Git SHA from triggering commit
+      - name: Set Git SHA
+        run: echo "GIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
 
+      # ✅ Update Deployment with Git SHA image
+      - name: Update Deployment Image
+        run: |
+          cd backend/k8s/deployment
+          kubectl set image deployment/deployer-app \
+            deployer-app=${{ secrets.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} \
+            -n ashapp
+
+      # ✅ Rollout restart to ensure pods pick new image
+      - name: Rollout Restart
+        run: |
+          kubectl rollout restart deployment/deployer-app -n ashapp
+          kubectl rollout status deployment/deployer-app -n ashapp
+
+      # ✅ Apply Services
       - name: Apply Services
         run: |
           cd backend/k8s
           kubectl apply -f services/
-          echo "Services applied"
           kubectl get svc -n ashapp
 
+      # ✅ Apply Network Policies
       - name: Apply Network Policies
         run: |
           cd backend/k8s
           kubectl apply -f networkpolicies/
-          echo "NetworkPolicies applied"
           kubectl get networkpolicy -n ashapp
 
+      # ✅ Apply HPA
       - name: Apply HPA
         run: |
           cd backend/k8s
           kubectl apply -f hpa/
-          echo "HPA applied"
           kubectl get hpa -n ashapp
 
+      # ✅ Apply RBAC
       - name: Apply RBAC
         run: |
           cd backend/k8s
           kubectl apply -f rbac/ --recursive
-          echo "RBAC applied"
           kubectl get sa -n ashapp
           kubectl get role -n ashapp
           kubectl get rolebinding -n ashapp
@@ -71,11 +81,11 @@ jobs:
           PROTOCOL="http"
           TARGET_URL=""
 
-          # EC2 public IP from metadata
+          # Get EC2 public IP from metadata
           PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || true)
           echo "Using EC2 Public IP: $PUBLIC_IP"
 
-          # Try LoadBalancer service first
+          # Try LoadBalancer first
           LB_INFO=$(kubectl -n "$NAMESPACE" get svc -o jsonpath='{range .items[?(@.spec.type=="LoadBalancer")]}{.status.loadBalancer.ingress[0].ip}{" "}{.status.loadBalancer.ingress[0].hostname}{" "}{.spec.ports[0].port}{"\n"}{end}' | head -n1 || true)
           if [[ -n "$LB_INFO" ]]; then
             read -r LB_IP LB_HOST LB_PORT <<<"$LB_INFO"
