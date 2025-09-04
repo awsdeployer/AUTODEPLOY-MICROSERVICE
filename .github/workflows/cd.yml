@@ -41,7 +41,6 @@ jobs:
 
       - name: Rollout Restart
         run: |
-          kubectl rollout restart deployment/deployer-app -n ashapp
           kubectl rollout status deployment/deployer-app -n ashapp
 
       # ======================
