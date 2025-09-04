@@ -5,8 +5,10 @@ on:
     branches:
       - main
 
-jobs:
+permissions:
+  contents: write  # needed to commit GIT_SHA.txt back
 
+jobs:
   # ======================
   # Deployer App
   # ======================
@@ -64,3 +66,15 @@ jobs:
           format: table
           exit-code: 0
         continue-on-error: true
+
+      # ======================
+      # Save Git SHA for CD
+      # ======================
+      - name: Commit SHA file
+        run: |
+          echo "${GIT_SHA}" > backend/automatic-deployer/GIT_SHA.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add backend/automatic-deployer/GIT_SHA.txt
+          git commit -m "Update latest Git SHA for Deployer App" || echo "No changes to commit"
+          git push
