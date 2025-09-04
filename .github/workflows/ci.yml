@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'backend/GIT_SHA.txt'
 
 permissions:
   contents: write  # needed to commit GIT_SHA.txt back
