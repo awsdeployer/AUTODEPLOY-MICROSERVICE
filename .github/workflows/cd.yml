@@ -23,11 +23,11 @@ jobs:
         with:
           version: 'v1.27.0'
 
-      # ✅ Export Git SHA from triggering commit
+      # Export Git SHA from triggering commit
       - name: Set Git SHA
         run: echo "GIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
 
-      # ✅ Update Deployment with Git SHA image
+      # Update Deployment with Git SHA image
       - name: Update Deployment Image
         run: |
           cd backend/k8s/deployment
@@ -35,34 +35,34 @@ jobs:
             deployer-app=${{ secrets.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} \
             -n ashapp
 
-      # ✅ Rollout restart to ensure pods pick new image
+      # Rollout restart to ensure pods pick new image
       - name: Rollout Restart
         run: |
           kubectl rollout restart deployment/deployer-app -n ashapp
           kubectl rollout status deployment/deployer-app -n ashapp
 
-      # ✅ Apply Services
+      # Apply Services
       - name: Apply Services
         run: |
           cd backend/k8s
           kubectl apply -f services/
           kubectl get svc -n ashapp
 
-      # ✅ Apply Network Policies
+      # Apply Network Policies
       - name: Apply Network Policies
         run: |
           cd backend/k8s
           kubectl apply -f networkpolicies/
           kubectl get networkpolicy -n ashapp
 
-      # ✅ Apply HPA
+      # Apply HPA
       - name: Apply HPA
         run: |
           cd backend/k8s
           kubectl apply -f hpa/
           kubectl get hpa -n ashapp
 
-      # ✅ Apply RBAC
+      # Apply RBAC
       - name: Apply RBAC
         run: |
           cd backend/k8s
