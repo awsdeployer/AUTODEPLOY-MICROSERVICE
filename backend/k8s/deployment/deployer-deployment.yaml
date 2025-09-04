@@ -57,11 +57,11 @@ spec:
         # --------------------------
         resources:
           requests:
-            memory: "240Mi"
-            cpu: "180m"
+            memory: "128Mi"
+            cpu: "50m"
           limits:
-            memory: "480Mi"
-            cpu: "800m"
+            memory: "256Mi"
+            cpu: "200m"
       volumes:
       - name: docker-sock
         hostPath:
