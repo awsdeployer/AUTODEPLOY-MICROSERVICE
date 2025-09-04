@@ -27,7 +27,7 @@ jobs:
       # Extract Git SHA
       # ======================
       - name: Read Git SHA
-        run: echo "GIT_SHA=$(cat backend/automatic-deployer/GIT_SHA.txt)" >> $GITHUB_ENV
+        run: echo "GIT_SHA=$(cat backend/GIT_SHA.txt)" >> $GITHUB_ENV
 
       # ======================
       # Update Deployment
