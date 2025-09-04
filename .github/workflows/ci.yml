@@ -74,7 +74,7 @@ jobs:
       # ======================
       - name: Commit SHA file
         run: |
-          echo "${GIT_SHA}" > backend/automatic-deployer/GIT_SHA.txt
+          echo "${GIT_SHA}" > backend/GIT_SHA.txt
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add backend/GIT_SHA.txt
