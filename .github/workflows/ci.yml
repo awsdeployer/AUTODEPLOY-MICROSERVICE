@@ -1,0 +1,82 @@
+name: CI - Docker Build & Push (Deployer App)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  # ======================
+  # Deployer App
+  # ======================
+  deployer-app:
+    runs-on: self-hosted
+    env:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Linting (Flake8)
+        run: pip install flake8 && flake8 backend || true
+        continue-on-error: true
+
+      - name: SAST (CodeQL Analysis)
+        uses: github/codeql-action/analyze@v2
+        continue-on-error: true
+
+      - name: SCA (Safety)
+        run: pip install safety && safety check -r backend/requirements.txt || true
+        continue-on-error: true
+
+      - name: Unit Tests (pytest)
+        run: pip install pytest && pytest backend/tests || true
+        continue-on-error: true
+
+      - name: DAST (OWASP ZAP Baseline Scan)
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build & Push Deployer App (Git SHA)
+        run: |
+          cd backend
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} -f deployer-dockerfile .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
+
+      - name: Image Scan (Trivy - Deployer App)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
+          format: table
+          exit-code: 0
+        continue-on-error: true
+
+      - name: Update Deployment manifest
+        run: |
+          sed -i "s|image:.*deployer-app.*|image: ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}|" backend/k8s/deployment/deployer-deployment.yaml
+
+      - name: Commit & Push Deployment Update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add backend/k8s/deployment/deployer-deployment.yaml
+          git diff --staged --quiet || git commit -m "Update deployer-app image to ${{ env.GIT_SHA }} [skip ci]"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
