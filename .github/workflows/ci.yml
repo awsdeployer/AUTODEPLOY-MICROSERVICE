@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'backend/k8s/deployment/deployer-deployment.yaml'
 
 permissions:
   contents: write
