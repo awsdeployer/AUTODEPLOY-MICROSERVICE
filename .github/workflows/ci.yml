@@ -81,4 +81,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git add backend/k8s/deployment/deployer-deployment.yaml
           git diff --staged --quiet || git commit -m "Update deployer-app image to ${{ env.GIT_SHA }} [skip ci]"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+          git push --force https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
