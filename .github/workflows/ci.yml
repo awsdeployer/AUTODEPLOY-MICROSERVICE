@@ -1,4 +1,4 @@
-name: CI - Docker Build & Push (DEPLOYER-APP)
+name: CI - Docker Build & Push (AUTODEPLOY-MICROSERVICE)
 
 on:
   push:
