@@ -2,7 +2,7 @@ name: CD - Kubernetes Deploy
 
 on:
   workflow_run:
-    workflows: ["CI - Docker Build & Push"]  # Must match CI workflow name
+    workflows: ["CI - Docker Build & Push (DEPLOYER-APP)"]  # Must match CI workflow name
     types:
       - completed
 
