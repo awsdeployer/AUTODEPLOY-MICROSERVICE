@@ -6,7 +6,7 @@ on:
       - 'backend/k8s/**'
 
 jobs:
-  validate-and-deploy:
+  AUTODEPLOY-MICROSERVICE-K8S:
     runs-on: self-hosted
 
     steps:
