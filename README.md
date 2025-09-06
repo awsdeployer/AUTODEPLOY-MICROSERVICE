@@ -5,6 +5,7 @@ DOCKER_HUB_ACCESS_TOKEN
 
 
 
+
 kubectl get namespace ashapp -o json > ashapp-latest.json
 
 nano ashapp-latest.json
