@@ -1,4 +1,4 @@
-name: CI - Docker Build & Push (Deployer App)
+name: CI - Docker Build & Push (DEPLOYER-APP)
 
 on:
   push:
