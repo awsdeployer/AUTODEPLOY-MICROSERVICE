@@ -14,7 +14,7 @@ jobs:
   # ======================
   # Deployer App
   # ======================
-  AUTODEPLOY-MICROSERVICE:
+  AUTODEPLOY-MICROSERVICE-CI:
     runs-on: self-hosted
     env:
       DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
