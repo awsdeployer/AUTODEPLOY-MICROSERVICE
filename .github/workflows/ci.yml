@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'backend/k8s/deployment/deployer-deployment.yaml'
+      - 'backend/k8s/**'
 
 permissions:
   contents: write
