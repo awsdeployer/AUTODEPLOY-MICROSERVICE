@@ -76,3 +76,4 @@ spec:
           path: /home/ubuntu/.kube
           type: Directory
 
+
