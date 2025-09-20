@@ -18,7 +18,7 @@ spec:
       serviceAccountName: deployer-sa
       containers:
       - name: deployer-app
-        image: ashwanth01/deployer-app:f0587b59e565b500af89fccf813253bda1456ae8
+        image: ashwanth01/deployer-app:c0a18d90221d05a158bdaa8fe4e6600da235232b
         ports:
         - containerPort: 5000
         env:
