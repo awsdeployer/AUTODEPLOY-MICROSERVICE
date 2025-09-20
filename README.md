@@ -68,16 +68,17 @@ This platform is ideal for educational, demo, or internal environments where use
 
 ## System Architecture
 
+
 ### High-Level Design Diagram
 
 ```mermaid
 flowchart TD
-    A[User (Web UI)] -->|HTTP (REST)| B[Flask Backend API]
-    B -->|Docker CLI| C[Docker Daemon]
-    B -->|Kubernetes CLI| D[Kubernetes Cluster]
-    B -->|HTTP| E[Monitoring Service]
-    D --> F[Deployed Flask App]
-    F -->|HTTP| G[User]
+  A["User (Web UI)"] -- "HTTP (REST)" --> B["Flask Backend API"]
+  B -- "Docker CLI" --> C["Docker Daemon"]
+  B -- "Kubernetes CLI" --> D["Kubernetes Cluster"]
+  B -- "HTTP" --> E["Monitoring Service"]
+  D --> F["Deployed Flask App"]
+  F -- "HTTP" --> G["User"]
 ```
 
 ### Component Breakdown
@@ -187,4 +188,3 @@ sequenceDiagram
 - All credentials and sensitive data are masked in logs.
 
 ---
-
