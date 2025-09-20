@@ -23,21 +23,11 @@ jobs:
         with:
           version: 'v1.27.0'
 
-      # ======================
-      # Extract Git SHA
-      # ======================
-      - name: Read Git SHA
-        run: echo "GIT_SHA=$(cat backend/GIT_SHA.txt)" >> $GITHUB_ENV
-
-      # ======================
-      # Update Deployment
-      # ======================
-      - name: Update Deployment Image
+      - name: deployment
         run: |
-          cd backend/k8s/deployment
-          kubectl set image deployment/deployer-app \
-            deployer-app=${{ secrets.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} \
-            -n ashapp
+          cd backend/k8s
+          kubectl apply -f deployment/
+
 
       - name: Rollout Restart
         run: |
