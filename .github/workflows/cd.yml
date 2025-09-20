@@ -31,7 +31,7 @@ jobs:
 
       - name: Rollout Restart
         run: |
-          kubectl rollout status deployment/deployer-app -n ashapp
+          kubectl rollout restart deployment/deployer-app -n ashapp
 
       # ======================
       # Apply K8s Manifests
