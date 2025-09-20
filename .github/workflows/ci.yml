@@ -1,7 +1,7 @@
 name: CI - Docker Build & Push (AUTODEPLOY-MICROSERVICE)
 
 on:
-  #push:
+  push:
     branches:
       - main
     paths-ignore:
