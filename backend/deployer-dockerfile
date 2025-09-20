@@ -7,8 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends gcc build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies in a virtualenv (for minimal runtime)
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN python -m venv /venv && \
     . /venv/bin/activate && \
     pip install --upgrade pip && \
@@ -24,8 +23,8 @@ WORKDIR /app
 COPY --from=builder /venv /venv
 
 # Copy application code
-COPY backend/deployer ./deployer
-COPY backend/deployer_frontend ./deployer_frontend
+COPY deployer ./deployer
+COPY deployer_frontend ./deployer_frontend
 
 # Set environment variables
 ENV PATH="/venv/bin:$PATH"
