@@ -34,4 +34,5 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 5000
 
 # Start with Gunicorn
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "deployer.app:app"]
+ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:5000", "deployer.app:app"]
+
