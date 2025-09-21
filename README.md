@@ -186,6 +186,7 @@ sequenceDiagram
 - No user code is stored; only Docker images and Kubernetes resources are created.
 - The system is designed for demo and educational use, not for production workloads.
 - All credentials and sensitive data are masked in logs.
+  
 
 ---
 
