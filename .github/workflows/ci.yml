@@ -36,16 +36,16 @@ jobs:
         run: flake8 backend || true
         continue-on-error: true
 
+      - name: Unit Tests (pytest)
+        run: pytest backend/tests || true
+        continue-on-error: true
+
       - name: SAST (CodeQL Analysis)
         uses: github/codeql-action/analyze@v2
         continue-on-error: true
 
       - name: SCA (Safety)
         run: safety check -r backend/requirements.txt || true
-        continue-on-error: true
-
-      - name: Unit Tests (pytest)
-        run: pytest backend/tests || true
         continue-on-error: true
 
       - name: DAST (OWASP ZAP Baseline Scan)
@@ -63,11 +63,10 @@ jobs:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build & Push Deployer App (Git SHA)
+      - name: Image Build Deployer App (Git SHA)
         run: |
           cd backend
           docker build -t ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }} -f deployer-dockerfile .
-          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
 
       - name: Image Scan (Trivy - Deployer App)
         uses: aquasecurity/trivy-action@master
@@ -76,6 +75,10 @@ jobs:
           format: table
           exit-code: 0
         continue-on-error: true
+
+      - name: Image Push Deployer App (Git SHA)
+        run: |
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/deployer-app:${{ env.GIT_SHA }}
 
       - name: Update Deployment manifest
         run: |
