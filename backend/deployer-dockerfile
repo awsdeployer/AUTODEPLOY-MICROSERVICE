@@ -17,8 +17,7 @@ COPY --from=builder /usr/local /usr/local
 COPY deployer ./deployer
 COPY deployer_frontend ./deployer_frontend
 # Set environment variables
-ENV PATH="/venv/bin:$PATH" && \
-    PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1
 # Expose the port Flask runs on
 EXPOSE 5000
 # Start with Gunicorn
