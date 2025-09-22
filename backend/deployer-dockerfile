@@ -1,38 +1,26 @@
 ARG VERSION=3.12-slim
 FROM python:${VERSION} AS builder
-
 WORKDIR /app
-
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends gcc build-essential && \
     rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
-RUN python -m venv /venv && \
-    . /venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gunicorn
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # ---- Runtime stage ----
 FROM python:3.12-slim
-
 WORKDIR /app
-
-# Copy virtualenv from builder
-COPY --from=builder /venv /venv
-
+# Copy installed dependencies from builder
+COPY --from=builder /usr/local /usr/local
 # Copy application code
 COPY deployer ./deployer
 COPY deployer_frontend ./deployer_frontend
-
 # Set environment variables
-ENV PATH="/venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-
+ENV PATH="/venv/bin:$PATH" && \
+    PYTHONUNBUFFERED=1
 # Expose the port Flask runs on
 EXPOSE 5000
-
 # Start with Gunicorn
 ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:5000", "deployer.app:app"]
 
